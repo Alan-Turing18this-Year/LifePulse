@@ -1,0 +1,912 @@
+---
+title: |
+  | DS211
+  | Linear and Nonlinear Models
+subtitle: |
+  | --------------------------------------------------
+  | Methodology a
+  | --------------------------------------------------
+author: "yawa"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - "\\usepackage{graphicx}"
+  - "\\usepackage{titling}"
+  - "\\pretitle{\\begin{center}\\LARGE\\includegraphics[width=4cm]{logo.png}\\\\[\\bigskipamount]}"
+  - "\\posttitle{\\end{center}}"
+---
+
+# Setup
+
+```{r}
+# --------------------------------------------------
+# Set working directory
+# --------------------------------------------------
+setwd("C:/Users/PC/Documents/2ND YEAR 1ST SEMESTER/L&NL/FINALS/DATAS")
+
+# Load required packages
+library(tidyverse)
+
+# --------------------------------------------------
+# Helper function: read exactly ONE CSV per folder
+# --------------------------------------------------
+read_single_csv <- function(folder_path) {
+  csv_file <- list.files(folder_path, pattern = "\\.csv$", full.names = TRUE)
+  
+  if (length(csv_file) != 1) {
+    stop(paste("Expected 1 CSV file in", folder_path, 
+               "but found", length(csv_file)))
+  }
+  
+  read_csv(csv_file)
+}
+
+# --------------------------------------------------
+# Read datasets from DATAS folders
+# --------------------------------------------------
+birth_rate <- read_single_csv(
+  file.path(getwd(), "crude-birth-rate")
+)
+
+age_dependency <- read_single_csv(
+  file.path(getwd(), "age-dependency-ratio-of-working-age-population")
+)
+
+child_mortality <- read_single_csv(
+  file.path(getwd(), "child-mortality-igme")
+)
+
+crude_death_rate <- read_single_csv(
+  file.path(getwd(), "crude-death-rate")
+)
+
+gdp_per_capita <- read_single_csv(
+  file.path(getwd(), "gdp-per-capita-penn-world-table")
+)
+
+gov_revenues <- read_single_csv(
+  file.path(getwd(), "government-revenues-as-a-share-of-gdp-imf")
+)
+
+gov_spending <- read_single_csv(
+  file.path(getwd(), "historical-gov-spending-gdp")
+)
+
+avg_age_mothers <- read_single_csv(
+  file.path(getwd(), "period-average-age-of-mothers")
+)
+
+# --------------------------------------------------
+# Standardize variable names (MATCHING ACTUAL COLUMNS)
+# --------------------------------------------------
+
+birth_rate <- birth_rate %>%
+  select(
+    country = Entity,
+    year = Year,
+    birth_rate = `Birth rate - Sex: all - Age: all - Variant: estimates`
+  )
+
+age_dependency <- age_dependency %>%
+  select(
+    country = Entity,
+    year = Year,
+    age_dependency_ratio = `Total dependency ratio - Sex: all - Variant: estimates`
+  )
+
+child_mortality <- child_mortality %>%
+  select(
+    country = Entity,
+    year = Year,
+    child_mortality_rate = 
+      `Child mortality rate of children aged under five years, per 100 live births`
+  )
+
+crude_death_rate <- crude_death_rate %>%
+  select(
+    country = Entity,
+    year = Year,
+    crude_death_rate = `Death rate - Sex: all - Age: all - Variant: estimates`
+  )
+
+gdp_per_capita <- gdp_per_capita %>%
+  select(
+    country = Entity,
+    year = Year,
+    gdp_per_capita = `GDP per capita (output, multiple price benchmarks)`
+  )
+
+gov_revenues <- gov_revenues %>%
+  select(
+    country = Entity,
+    year = Year,
+    gov_revenue_gdp = 
+      `17.1.1 - Total government revenue as a proportion of GDP (%) - GR_G14_GDP`
+  )
+
+gov_spending <- gov_spending %>%
+  select(
+    country = Entity,
+    year = Year,
+    gov_spending_gdp = `Government expenditure (% of GDP)`
+  )
+
+avg_age_mothers <- avg_age_mothers %>%
+  select(
+    country = Entity,
+    year = Year,
+    avg_age_mothers = `Mean age at childbearing, historical`
+  )
+
+
+# --------------------------------------------------
+# Merge all datasets into ONE cross-country dataset
+# --------------------------------------------------
+data_full <- birth_rate %>%
+  left_join(age_dependency, by = c("country", "year")) %>%
+  left_join(child_mortality, by = c("country", "year")) %>%
+  left_join(crude_death_rate, by = c("country", "year")) %>%
+  left_join(gdp_per_capita, by = c("country", "year")) %>%
+  left_join(gov_revenues, by = c("country", "year")) %>%
+  left_join(gov_spending, by = c("country", "year")) %>%
+  left_join(avg_age_mothers, by = c("country", "year"))
+
+# --------------------------------------------------
+# Filter data for CROSS-COUNTRY ANALYSIS in 2023
+# --------------------------------------------------
+data_2023 <- data_full %>%
+  filter(year == 2023)
+
+# --------------------------------------------------
+# Remove observations with missing values
+# (Final regression-ready dataset)
+# --------------------------------------------------
+data_2023_clean <- data_2023 %>%
+  drop_na(
+    birth_rate,
+    avg_age_mothers,
+    age_dependency_ratio,
+    child_mortality_rate,
+    crude_death_rate,
+    gdp_per_capita,
+    gov_revenue_gdp,
+    gov_spending_gdp
+  )
+
+# --------------------------------------------------
+# Data checks
+# --------------------------------------------------
+glimpse(data_2023_clean)
+summary(data_2023_clean)
+
+# Missing values check
+sum(is.na(data_2023))         # Before cleaning
+sum(is.na(data_2023_clean))   # After cleaning
+```
+
+# 1. Methodology
+
+## 1.1 Data Sources and Preparation
+
+This study employs a cross-country dataset for the year 2023, integrating social and economic indicators from multiple international data sources. Birth rate serves as the dependent variable, while social factors (average maternal age, age dependency ratio, child mortality rate, and crude death rate) and economic factors (GDP per capita growth, government revenues, and government spending as a share of GDP) are used as explanatory variables.
+
+All datasets were imported into RStudio and harmonized by country and year identifiers. The analysis focuses on a cross-sectional snapshot for 2023. Variables were renamed for consistency, and observations with missing values were excluded to ensure comparability across countries.
+
+Data preprocessing was conducted using the tidyverse package.
+
+### R packages used
+
+```{r}
+# library(tidyverse)
+```
+
+### Key preprocessing steps
+
+-   Import CSV files
+-   Standardize variable names
+-   Merge datasets by country and year
+-   Filter to 2023
+-   Remove missing observations
+
+## 1.2 Variable Definition
+
+The dependent variable in this study is the crude birth rate, defined as the number of live births per 1,000 individuals in a country in 2023, providing a standardized measure of fertility outcomes across nations. Independent variables include social and economic indicators expected to influence birth rates. Social variables comprise average maternal age, age dependency ratio, child mortality rate, and crude death rate, capturing fertility timing, population structure, child survival, and overall mortality patterns. Economic and fiscal variables include GDP per capita growth, government revenue as a share of GDP, and government spending as a share of GDP, reflecting economic performance, fiscal capacity, and welfare provision that may shape reproductive behavior.
+
+Together, these variables allow for the assessment of both social and economic determinants of birth rates. Social factors are expected to be positively associated with fertility in younger or less developed populations, while higher maternal age and stronger economic or fiscal indicators are generally associated with lower birth rates, consistent with demographic transition theory. This combination ensures that the model captures complementary dimensions of demographic structure, health conditions, and economic context across countries.
+
+## 1.3 Exploratory Analysis and Variable Relationships
+
+Prior to formal modeling, descriptive statistics and bivariate relationships were examined to understand the distribution of variables and their associations with birth rates. Correlation analysis was used to identify potential linear relationships and to assess multicollinearity among explanatory variables.
+
+### Correlation Matrix
+
+```{r}
+# --------------------------------------------------
+# Summary statistics
+# --------------------------------------------------
+summary(data_2023_clean)
+
+# --------------------------------------------------
+# Correlation matrix and plot
+# --------------------------------------------------
+library(corrplot)
+
+cor_matrix <- data_2023_clean %>%
+  select(where(is.numeric)) %>%   # safer than manually dropping columns
+  cor(use = "complete.obs")
+
+corrplot(
+  cor_matrix,
+  method = "color",
+  type = "upper",
+  tl.cex = 0.8,
+  number.cex = 0.7
+)
+```
+
+### Descriptive Statistics
+
+Table X presents the summary statistics for the variables used in the cross-country analysis for the year 2023, covering 65 countries.
+
+Birth rates vary substantially across countries, ranging from **4.57** to **35.22 births per 1,000 population**, with a mean of **14.67**. This wide dispersion reflects significant demographic heterogeneity across nations at different stages of development. The **age dependency ratio** has a mean of **55.17**, indicating that, on average, dependent populations (young and elderly) constitute more than half of the working-age population.
+
+The **child mortality rate** remains low for most countries (median = **0.81 per 100 live births**), but with notable outliers reaching as high as **9.50**, suggesting persistent disparities in health outcomes. **Crude death rates** range from **0.93** to **15.15**, reflecting differences in population age structures and health conditions.
+
+Economic indicators also show wide variation. **GDP per capita** ranges from **USD 2,776** to **USD 98,778**, highlighting sharp contrasts between low- and high-income countries. Government fiscal capacity differs considerably, with **government revenue** averaging **32.85% of GDP** and **government spending** averaging **34.73% of GDP**. The **average age of mothers** ranges from **25.97** to **33.42 years**, suggesting substantial cross-country differences in fertility timing.
+
+### Interpretation of the Correlation Matrix
+
+The correlation matrix visualizes the pairwise linear relationships among the dependent and independent variables using a color gradient ranging from **–1 to +1**.
+
+-   **Dark blue tones** indicate moderate to strong positive correlations.
+
+-   **Dark red tones** indicate moderate to strong negative correlations.
+
+-   **Light or white tones** represent weak or negligible correlations.
+
+-   The matrix is symmetric, and only one triangle is required for interpretation.
+
+-   The diagonal elements represent perfect correlations (r = 1) of variables with themselves.
+
+#### Relationships with the Dependent Variable (Birth Rate)
+
+The birth rate exhibits several strong and theoretically consistent correlations with the explanatory variables:
+
+#### Positive Correlations
+
+-   **Age dependency ratio** shows a strong positive correlation with birth rate, indicating that countries with larger dependent populations tend to have higher fertility.
+
+-   **Child mortality rate** is strongly positively correlated with birth rate, consistent with demographic transition theory, where higher child mortality encourages higher fertility as a survival strategy.
+
+-   **Crude death rate** also displays a strong positive correlation with birth rate, reflecting broader health and demographic conditions in less developed populations.
+
+#### Negative Correlations
+
+-   **GDP per capita** shows a strong negative correlation with birth rate, suggesting that higher levels of economic development are associated with lower fertility.
+
+-   **Government revenue (% of GDP)** and **government spending (% of GDP)** both exhibit moderate negative correlations with birth rate, indicating that stronger fiscal capacity and public sector involvement are generally associated with lower fertility levels.
+
+-   **Average age of mothers** is moderately negatively correlated with birth rate, implying that delayed childbearing is associated with fewer births.
+
+#### Weak Correlation
+
+-   The **year** variable shows negligible correlation with birth rate, which is expected given the cross-sectional nature of the data (single year: 2023).
+
+#### Multicollinearity Among Independent Variables
+
+The correlation matrix also reveals notable relationships among the explanatory variables:
+
+-   **Social and health indicators**—including age dependency ratio, child mortality rate, and crude death rate—are strongly positively correlated with one another, reflecting common demographic and developmental characteristics.
+
+-   **GDP per capita** is strongly negatively correlated with these social indicators, reinforcing the divide between developed and less developed countries.
+
+-   **Government revenue and government spending** are strongly positively correlated, as expected given their close fiscal relationship.
+
+These patterns suggest the **potential presence of multicollinearity**, particularly among social and economic development indicators. While this does not invalidate the regression analysis, it highlights the need for careful interpretation of coefficient estimates and possibly further diagnostics.
+
+## 1.4 Statistical Model and Estimation Strategy
+
+To examine the influence of social and economic factors on cross-country birth rates in 2023, this study employs a multiple linear regression model estimated using Ordinary Least Squares (OLS). This approach enables the simultaneous assessment of demographic and economic determinants of fertility while controlling for confounding influences. The dependent variable is the crude birth rate, while the explanatory variables include maternal characteristics, demographic structure, health outcomes, and macroeconomic indicators. The error term captures unobserved country-specific factors affecting fertility. This specification provides a transparent and reproducible framework for evaluating the relative importance of social and economic determinants of birth rates across countries.
+
+$$
+BirthRate_i = \beta_0 + \beta_1 \, AvgAgeMothers_i + \beta_2 \, AgeDependencyRatio_i + \beta_3 \, ChildMortality_i + \beta_4 \, CrudeDeathRate_i + \beta_5 \, GDPPerCapita_i + \beta_6 \, GovRevenueGDP_i + \beta_7 \, GovSpendingGDP_i + \epsilon_i
+$$
+
+### Model Fitting
+
+```{r}
+# --------------------------------------------------
+# Load required packages
+# --------------------------------------------------
+library(tidyverse)
+library(car)
+library(lmtest)
+library(sandwich)
+
+# --------------------------------------------------
+# Fit multiple linear regression (OLS)
+# --------------------------------------------------
+model_ols <- lm(
+  birth_rate ~
+    avg_age_mothers +
+    age_dependency_ratio +
+    child_mortality_rate +
+    crude_death_rate +
+    gdp_per_capita +
+    gov_revenue_gdp +
+    gov_spending_gdp,
+  data = data_2023_clean
+)
+
+# --------------------------------------------------
+# Display regression results
+# --------------------------------------------------
+summary(model_ols)
+```
+
+### Regression Results and Interpretation
+
+These are the results of the Ordinary Least Squares (OLS) regression examining the social and economic determinants of birth rates across 65 countries in 2023.
+
+The model demonstrates **strong overall explanatory power**, with an **R² of 0.947** and an **adjusted R² of 0.941**, indicating that approximately **94% of the cross-country variation in birth rates** is explained by the included demographic and economic variables. The F-statistic is highly significant (p \< 0.001), confirming the joint significance of the regressors.
+
+### Interpretation of Individual Coefficients
+
+#### Maternal Characteristics
+
+The **average age of mothers** has a **statistically significant negative effect** on birth rates (β = −0.732, p = 0.001). This implies that, holding other factors constant, a one-year increase in the average maternal age is associated with a **decrease of approximately 0.73 births per 1,000 population**. This result is consistent with fertility postponement and declining lifetime fertility observed in more developed societies.
+
+#### Demographic Structure
+
+The **age dependency ratio** exhibits a **strong and positive relationship** with birth rates (β = 0.358, p \< 0.001). Countries with larger dependent populations tend to experience higher fertility, reflecting demographic momentum and higher proportions of young populations.
+
+#### Health Indicators
+
+The **child mortality rate** is **positively and significantly associated** with birth rates (β = 1.521, p \< 0.001). This finding aligns with demographic transition theory, suggesting that higher child mortality encourages higher fertility as a compensatory mechanism.
+
+In contrast, the **crude death rate** shows a **significant negative effect** on birth rates (β = −1.130, p \< 0.001). After controlling for child mortality and age dependency, higher overall mortality is associated with lower fertility, potentially reflecting aging populations where death rates are driven by older age structures rather than poor health conditions.
+
+#### Economic and Fiscal Variables
+
+**GDP per capita** has a negative but **statistically insignificant** coefficient (p = 0.563). Similarly, **government revenue** and **government spending as shares of GDP** are both negative but statistically insignificant.
+
+The lack of statistical significance for these economic variables suggests that **their effects on fertility operate indirectly**, primarily through demographic and health channels (e.g., maternal age, mortality, dependency ratios). Once these social factors are controlled for, the direct impact of economic indicators on birth rates diminishes.
+
+#### Model Diagnostics and Fit
+
+The residuals are symmetrically distributed around zero, with a median close to zero, suggesting no major specification issues. The residual standard error of **2.03** indicates relatively low unexplained variation given the scale of the dependent variable.
+
+## 1.5 Diagnostic Checks and Robustness
+
+To ensure the validity of the OLS estimates, the model was subjected to a series of diagnostic checks. These include: multicollinearity among explanatory variables, linearity of relationships, homoscedasticity (constant variance) of residuals, normality of residuals, and the identification of outliers or influential points. These checks help to verify that standard OLS assumptions hold and that the results are reliable.
+
+```{r}
+# --------------------------------------------------
+# Load required packages
+# --------------------------------------------------
+library(ggplot2)
+library(car)        # VIF, RESET
+library(lmtest)     # Breusch-Pagan test
+library(sandwich)   # Robust standard errors
+library(ggfortify)  # Diagnostic plots for lm objects
+
+# --------------------------------------------------
+# Re-fit OLS model (same specification as Section 1.4)
+# --------------------------------------------------
+model_ols <- lm(
+  birth_rate ~
+    avg_age_mothers +
+    age_dependency_ratio +
+    child_mortality_rate +
+    crude_death_rate +
+    gdp_per_capita +
+    gov_revenue_gdp +
+    gov_spending_gdp,
+  data = data_2023_clean
+)
+```
+
+### Multicollinearity
+
+```{r}
+# --------------------------------------------------
+# Check multicollinearity using VIF
+# --------------------------------------------------
+vif_values <- vif(model_ols)
+vif_values
+```
+
+### Multicollinearity Assessment
+
+Multicollinearity among the explanatory variables was evaluated using **Variance Inflation Factors (VIF)**. The results are reported below:
+
+| Variable                       | VIF  |
+|--------------------------------|------|
+| Average age of mothers         | 2.24 |
+| Age dependency ratio           | 2.23 |
+| Child mortality rate           | 3.36 |
+| Crude death rate               | 1.58 |
+| GDP per capita                 | 3.29 |
+| Government revenue (% of GDP)  | 7.61 |
+| Government spending (% of GDP) | 6.34 |
+
+All VIF values are **below the conventional threshold of 10**, indicating that **severe multicollinearity is not present** in the model. Most explanatory variables exhibit VIF values below 4, suggesting low to moderate correlation with other regressors.
+
+Government revenue and government spending display relatively higher VIF values (7.61 and 6.34, respectively), which is expected given the close fiscal relationship between revenue collection and public expenditure. However, these values remain below critical levels and do not threaten the stability or reliability of the estimated coefficients.
+
+### Implications for Estimation
+
+The observed degree of multicollinearity may slightly inflate the standard errors of the fiscal variables, potentially contributing to their lack of statistical significance. Nevertheless, the overall regression results remain valid, and the inclusion of these variables is theoretically justified to control for fiscal capacity and public sector involvement.
+
+Accordingly, **no variables were excluded** from the model on the basis of multicollinearity concerns.
+
+### Residuals vs. Fitted Values and RESET Test (Linearity and Specification)
+
+```{r}
+# --------------------------------------------------
+# Ramsey RESET test (functional form / non-linearity)
+# --------------------------------------------------
+reset_test <- resettest(
+  model_ols,
+  power = 2:3,
+  type = "fitted"
+)
+
+reset_test
+
+# --------------------------------------------------
+# Residuals vs Fitted values
+# --------------------------------------------------
+resid_data <- data.frame(
+  fitted_values = fitted(model_ols),
+  residuals = resid(model_ols)
+)
+
+ggplot(resid_data, aes(x = fitted_values, y = residuals)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Residuals vs Fitted Values",
+    subtitle = "Linearity and Model Specification Check",
+    x = "Fitted Values",
+    y = "Residuals"
+  ) +
+  theme_minimal()
+```
+
+The residuals versus fitted values plot is used to assess the assumptions of linearity and correct functional form. Under correct specification, residuals should be randomly scattered around the horizontal zero line with no systematic pattern.
+
+The plot reveals a mild curved (U-shaped) pattern in the smoothed residual line, suggesting that the relationship between the dependent variable (birth rate) and one or more explanatory variables may be nonlinear. This visual evidence is supported by the Ramsey RESET test, which formally evaluates omitted nonlinearities in the model.
+
+**RESET test results:**
+
+$RESET = 3.6705,\ df_1 = 2,\ df_2 = 55,\ p\text{-value} = 0.0319$
+
+Since the p-value is below the 5% significance level, the null hypothesis of correct functional form is rejected. This indicates potential model misspecification and suggests that nonlinear transformations (such as logarithmic or quadratic terms) or interaction effects may improve model fit.
+
+Additionally, the vertical dispersion of residuals appears slightly wider at lower fitted values, hinting at possible heteroscedasticity. This issue is examined more formally below.
+
+### Scale–Location Plot and Breusch–Pagan Test (Homoscedasticity)
+
+```{r}
+# --------------------------------------------------
+# Breusch–Pagan test for heteroskedasticity
+# --------------------------------------------------
+bp_test <- bptest(model_ols)
+bp_test
+
+# --------------------------------------------------
+# Scale–Location plot
+# --------------------------------------------------
+resid_data$std_resid <- rstandard(model_ols)
+resid_data$sqrt_abs_std_resid <- sqrt(abs(resid_data$std_resid))
+
+ggplot(resid_data, aes(x = fitted_values, y = sqrt_abs_std_resid)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    title = "Scale–Location Plot",
+    subtitle = "Assessment of Homoscedasticity",
+    x = "Fitted Values",
+    y = "√|Standardized Residuals|"
+  ) +
+  theme_minimal()
+
+```
+
+\
+
+The scale–location plot assesses whether the variance of the residuals remains constant across fitted values. Ideally, the smoothed line should be approximately horizontal, with residuals displaying uniform spread.
+
+The plot shows moderate fluctuations in the smoothed line, indicating some variation in residual variance across fitted values. However, this visual pattern is not strongly monotonic and may reflect localized variability rather than systematic heteroscedasticity.
+
+To formally test for heteroscedasticity, the studentized Breusch–Pagan test was conducted.
+
+**Breusch–Pagan test results:**
+
+$BP = 6.27,\ df = 7,\ p\text{-value} = 0.5086$
+
+The high p-value indicates that the null hypothesis of homoscedasticity cannot be rejected. Therefore, despite mild visual irregularities, there is no strong statistical evidence of heteroscedasticity. The OLS standard errors are likely to be reliable, though heteroskedasticity-robust standard errors may still be reported as a robustness check.
+
+### Q–Q Plot and Shapiro–Wilk Test (Normality of Residuals)
+
+```{r}
+# --------------------------------------------------
+# Shapiro–Wilk test for normality of residuals
+# --------------------------------------------------
+shapiro_test <- shapiro.test(residuals(model_ols))
+shapiro_test
+
+# --------------------------------------------------
+# Q–Q plot for residual normality
+# --------------------------------------------------
+ggplot(resid_data, aes(sample = residuals)) +
+  stat_qq() +
+  stat_qq_line() +
+  labs(
+    title = "Q–Q Plot of OLS Residuals",
+    subtitle = "Normality Diagnostic",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  ) +
+  theme_minimal()
+```
+
+The Q–Q plot is used to evaluate whether the residuals follow a normal distribution, which is important for the validity of hypothesis testing in small to moderate samples.
+
+Most residuals closely follow the 45-degree reference line, particularly in the central region of the distribution. Minor deviations are observed in the lower and upper tails, with one observation noticeably deviating from the line, suggesting the presence of mild outliers.
+
+The Shapiro–Wilk test provides formal confirmation.
+
+**Shapiro–Wilk test results:**
+
+$W = 0.9829,\ p\text{-value} = 0.5088$
+
+Since the p-value is well above conventional significance levels, the null hypothesis of normally distributed residuals cannot be rejected. Overall, the normality assumption appears to be reasonably satisfied.
+
+### Cook’s Distance (Influential Observations)
+
+```{r}
+# --------------------------------------------------
+# Cook's Distance
+# --------------------------------------------------
+resid_data$cooks_distance <- cooks.distance(model_ols)
+
+cutoff <- 4 / nrow(resid_data)
+
+ggplot(resid_data, aes(x = seq_along(cooks_distance), y = cooks_distance)) +
+  geom_col(alpha = 0.7) +
+  geom_hline(yintercept = cutoff, linetype = "dashed") +
+  labs(
+    title = "Cook’s Distance for Influential Observations",
+    subtitle = "Observations above the dashed line may be influential",
+    x = "Observation Index",
+    y = "Cook’s Distance"
+  ) +
+  theme_minimal()
+```
+
+Cook’s Distance was used to identify observations that exert disproportionate influence on the estimated regression coefficients. A threshold of 4/n was applied to flag potentially influential points.
+
+The Cook’s Distance plot reveals one observation (approximately index 24) with a value substantially above the threshold, indicating a highly influential data point. This observation has the potential to materially affect coefficient estimates and inference. Several additional observations slightly exceed the cutoff, suggesting moderate influence.
+
+These influential observations warrant further investigation to determine whether they represent data errors, unique country-specific characteristics, or valid but extreme cases. As a robustness check, re-estimating the model with these observations excluded or applying robust regression techniques would help assess the stability of the results.
+
+### Overall Diagnostic Assessment
+
+In summary, the diagnostic tests suggest that:
+
+-   The **linearity and functional form assumptions are likely violated**, as indicated by both visual inspection and the RESET test.
+
+-   **Homoscedasticity is not strongly violated**, based on the Breusch–Pagan test.
+
+-   **Residual normality is reasonably satisfied**.
+
+-   **A small number of influential observations exist**, with one observation exerting particularly strong influence.
+
+These findings motivate the use of robustness checks, including nonlinear specifications, robust standard errors, and sensitivity analyses excluding influential observations.
+
+## 1.6 Re-estimation with Log-Transformed Variables
+
+### Rationale for Log Transformation
+
+Given evidence of functional form misspecification and mild heteroscedasticity, logarithmic transformations are applied to continuous variables. Log transformations help to:
+
+-   Linearize nonlinear relationships
+
+-   Reduce the influence of extreme values
+
+-   Allow coefficients to be interpreted as **semi-elasticities or elasticities**
+
+-   Improve homoscedasticity and model fit
+
+### Revised Model Specification
+
+The log-linear model is specified as:
+
+$$
+\ln(\text{BirthRate}_i) = \beta_0 
++ \beta_1 \text{AvgAgeMothers}_i
++ \beta_2 \text{AgeDependencyRatio}_i
++ \beta_3 \ln(\text{ChildMortalityRate}_i)
++ \beta_4 \text{CrudeDeathRate}_i
++ \beta_5 \ln(\text{GDPPerCapita}_i)
++ \beta_6 \text{GovRevenueGDP}_i
++ \beta_7 \text{GovSpendingGDP}_i
++ \varepsilon_i
+$$
+
+Variables strictly greater than zero are log-transformed.
+
+### Revised R Code (Log-Transformed OLS)
+
+```{r}
+# Create log-transformed variables
+data_2023_log <- data_2023_clean %>%
+  mutate(
+    ln_birth_rate = log(birth_rate),
+    ln_child_mortality = log(child_mortality_rate),
+    ln_gdp_per_capita = log(gdp_per_capita)
+  )
+
+# Fit log-linear OLS model
+model_log_ols <- lm(
+  ln_birth_rate ~ avg_age_mothers +
+    age_dependency_ratio +
+    ln_child_mortality +
+    crude_death_rate +
+    ln_gdp_per_capita +
+    gov_revenue_gdp +
+    gov_spending_gdp,
+  data = data_2023_log
+)
+
+# Model summary
+summary(model_log_ols)
+```
+
+### Interpretation of the Log-Linear Regression Model
+
+The estimated empirical specification is given by:
+
+$$
+\ln(\text{BirthRate}_i) = \beta_0 
++ \beta_1 \text{AvgAgeMothers}_i
++ \beta_2 \text{AgeDependencyRatio}_i
++ \beta_3 \ln(\text{ChildMortalityRate}_i)
++ \beta_4 \text{CrudeDeathRate}_i
++ \beta_5 \ln(\text{GDPPerCapita}_i)
++ \beta_6 \text{GovRevenueGDP}_i
++ \beta_7 \text{GovSpendingGDP}_i
++ \varepsilon_i
+$$
+
+where epsilon denotes the stochastic error term. Because the dependent variable is expressed in logarithmic form, estimated coefficients are interpreted as semi-elasticities, except for regressors that are also log-transformed, in which case coefficients represent elasticities.
+
+#### Social and Demographic Determinants
+
+The results indicate that social and demographic variables are the primary drivers of cross-country variation in birth rates in 2023.
+
+The coefficient on **average age of mothers** is negative and statistically significant at the 1% level. Quantitatively, a one-year increase in the average maternal age is associated with an approximate **5.2 percent decrease in the crude birth rate**, holding all other factors constant. This finding is consistent with established demographic theory, reflecting delayed fertility and shorter reproductive windows in countries where childbearing occurs later in life.
+
+The **age dependency ratio** exhibits a positive and highly statistically significant association with fertility. A one-unit increase in the dependency ratio is associated with an increase in the birth rate of approximately **2.2 percent**. This variable emerges as one of the strongest predictors in the model, consistent with demographic transition theory, whereby younger population structures are associated with higher fertility levels.
+
+The coefficient on **child mortality**, expressed in logarithmic form, is positive and statistically significant. The estimated elasticity implies that a one percent increase in child mortality is associated with a **0.23 percent increase in the birth rate**. This relationship aligns with the fertility insurance hypothesis, according to which higher child mortality induces households to increase fertility to offset survival risks.
+
+The **crude death rate** enters the model with a negative and statistically significant coefficient. A one-unit increase in the crude death rate is associated with a **7.4 percent decrease in the birth rate**, holding other factors constant. This result contrasts with the linear model estimates and is more consistent with theoretical expectations, suggesting that higher overall mortality reflects adverse health or demographic conditions that suppress fertility rather than encourage it.
+
+#### Economic and Fiscal Variables
+
+In contrast to demographic factors, economic and fiscal variables do not exhibit statistically significant effects once social controls are included.
+
+The coefficient on **GDP per capita**, expressed in logarithmic form, is positive but statistically insignificant. This indicates that, conditional on demographic structure and mortality conditions, income level alone does not independently explain cross-country differences in fertility in 2023. Rather than undermining the model, this result suggests that the effect of economic development on fertility operates primarily through demographic and social channels.
+
+Similarly, **government revenue** and **government expenditure as shares of GDP** are statistically insignificant. This may reflect multicollinearity with broader measures of development or indicate that fiscal capacity influences fertility indirectly through public services such as education, healthcare, and social protection rather than through direct contemporaneous effects.
+
+#### Model Fit
+
+The log-linear model explains a substantial proportion of the variation in birth rates across countries, with an adjusted $R^2$ of **0.896**. While this represents a modest reduction relative to the linear specification, the improvement in model specification and interpretability justifies the log transformation.
+
+### Diagnostic Assessment and Model Validity
+
+#### Functional Form
+
+```{r}
+# --------------------------------------------------
+# Ramsey RESET test (functional form / non-linearity)
+# --------------------------------------------------
+reset_test_log <- resettest(
+  model_log_ols,
+  power = 2:3,
+  type = "fitted"
+)
+
+reset_test_log
+
+# --------------------------------------------------
+# Residuals vs Fitted values
+# --------------------------------------------------
+resid_data_log <- data.frame(
+  fitted_values = fitted(model_log_ols),
+  residuals = resid(model_log_ols)
+)
+
+ggplot(resid_data_log, aes(x = fitted_values, y = residuals)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  labs(
+    title = "Residuals vs Fitted Values (Log Model)",
+    subtitle = "Linearity and Model Specification Check",
+    x = "Fitted log(Birth Rate)",
+    y = "Residuals"
+  ) +
+  theme_minimal()
+```
+
+The Ramsey RESET test yields a p-value of **0.1687**, indicating a failure to reject the null hypothesis of correct functional form. This represents a marked improvement over the linear model and provides formal statistical support for the log-linear specification.
+
+#### Heteroscedasticity
+
+```{r}
+# --------------------------------------------------
+# Breusch–Pagan test for heteroskedasticity
+# --------------------------------------------------
+bp_test_log <- bptest(model_log_ols)
+bp_test_log
+
+# --------------------------------------------------
+# Scale–Location plot
+# --------------------------------------------------
+resid_data_log$std_resid <- rstandard(model_log_ols)
+resid_data_log$sqrt_abs_std_resid <- sqrt(abs(resid_data_log$std_resid))
+
+ggplot(resid_data_log, aes(x = fitted_values, y = sqrt_abs_std_resid)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", se = FALSE) +
+  labs(
+    title = "Scale–Location Plot (Log Model)",
+    subtitle = "Assessment of Homoscedasticity",
+    x = "Fitted log(Birth Rate)",
+    y = "√|Standardized Residuals|"
+  ) +
+  theme_minimal()
+```
+
+Visual inspection of the scale–location plot suggests the presence of heteroskedasticity, as the variance of the residuals appears to vary across fitted values. Although the studentized Breusch–Pagan test does not reject the null hypothesis of homoskedasticity (p-value = 0.1699), this test has limited power in small cross-sectional samples. Consequently, inference based on conventional standard errors may be unreliable.
+
+To address this concern, subsequent inference is conducted using heteroskedasticity-robust standard errors.
+
+#### Normality of Residuals
+
+```{r}
+# --------------------------------------------------
+# Shapiro–Wilk test for normality
+# --------------------------------------------------
+shapiro_test_log <- shapiro.test(resid(model_log_ols))
+shapiro_test_log
+
+# --------------------------------------------------
+# Q–Q plot for residual normality
+# --------------------------------------------------
+ggplot(resid_data_log, aes(sample = residuals)) +
+  stat_qq() +
+  stat_qq_line() +
+  labs(
+    title = "Q–Q Plot of Residuals (Log Model)",
+    subtitle = "Normality Diagnostic",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  ) +
+  theme_minimal()
+```
+
+The residuals are approximately normally distributed. The Shapiro–Wilk test yields a p-value of **0.084**, and the Q–Q plot shows only mild deviations in the tails. These departures are modest and unlikely to materially affect inference, particularly given the sample size.
+
+#### Influential Observations
+
+```{r}
+# --------------------------------------------------
+# Cook's Distance
+# --------------------------------------------------
+resid_data_log$cooks_distance <- cooks.distance(model_log_ols)
+
+cutoff <- 4 / nrow(resid_data_log)
+
+ggplot(resid_data_log, aes(x = seq_along(cooks_distance), y = cooks_distance)) +
+  geom_col(alpha = 0.7) +
+  geom_hline(yintercept = cutoff, linetype = "dashed") +
+  labs(
+    title = "Cook’s Distance for Influential Observations (Log Model)",
+    subtitle = "Observations above the dashed line may be influential",
+    x = "Observation Index",
+    y = "Cook’s Distance"
+  ) +
+  theme_minimal()
+
+```
+
+The Cook’s Distance diagnostic identifies several potentially influential observations, most notably those corresponding to indices 55 and 60. These observations may represent countries with extreme demographic or economic characteristics, such as very low income levels or unusually high mortality rates. While influential, these observations are not necessarily erroneous. Their exclusion would require substantive theoretical justification rather than statistical convenience.
+
+### Summary
+
+Overall, the log-linear specification substantially improves model validity relative to the linear model while preserving strong explanatory power. The results indicate that fertility differences across countries in 2023 are driven primarily by demographic structure and mortality conditions, with economic and fiscal variables exerting indirect or mediated effects. Despite remaining concerns related to heteroskedasticity and influential observations, the use of robust standard errors ensures the reliability of statistical inference.
+
+## 1.7 Re-estimation with Robust Standard Errors
+
+Although the log-linear specification substantially improves functional form and theoretical consistency relative to the linear model, diagnostic plots indicate remaining heteroskedasticity in the error variance. In particular, the scale–location plot exhibits a non-constant pattern, suggesting that the variance of the residuals changes with the level of fitted values. While the studentized Breusch–Pagan test does not reject the null hypothesis of homoskedasticity, this test is known to have low power in small cross-sectional samples such as the present dataset.
+
+To ensure valid statistical inference, the model is therefore re-estimated using **heteroscedasticity-robust (Huber–White) standard errors**. Robust standard errors correct the estimated variance–covariance matrix of the coefficients without altering the coefficient estimates themselves, thereby providing consistent standard errors and hypothesis tests in the presence of heteroskedasticity.
+
+Consistent with standard practice in applied demographic and cross-country empirical research, robust inference is applied to the **preferred log-linear specification only**, as correcting standard errors does not remedy bias arising from functional form misspecification.
+
+### Robust Log-Linear Model Specification
+
+$$
+\ln(\text{BirthRate}_i) = \beta_0
++ \beta_1 \text{AvgAgeMothers}_i
++ \beta_2 \text{AgeDependency}_i
++ \beta_3 \ln(\text{ChildMortality}_i)
++ \beta_4 \text{CrudeDeathRate}_i
++ \beta_5 \ln(\text{GDPpc}_i)
++ \beta_6 \text{GovRevenue}_i
++ \beta_7 \text{GovSpending}_i
++ \varepsilon_i
+$$
+
+All reported \$t\$-statistics, \$p\$-values, and confidence intervals are based on heteroskedasticity-robust standard errors.
+
+#### Robust Standard Errors (HC1)
+
+```{r}
+# --------------------------------------------------
+# Robust Standard Errors for the Log Model
+# --------------------------------------------------
+library(lmtest)
+library(sandwich)
+
+robust_log_results <- coeftest(
+  model_log_ols,
+  vcov = vcovHC(model_log_ols, type = "HC1")
+)
+
+robust_log_results
+```
+
+### Robust Standard Error Results and Interpretation
+
+Table X reports coefficient estimates for the log-linear fertility model using **heteroskedasticity-robust (HC1) standard errors**. The use of robust inference is motivated by visual evidence of heteroskedasticity in the residuals, a common feature of cross-country demographic data. Importantly, while robust standard errors adjust inference, they do not alter point estimates; thus, any changes in statistical significance reflect more reliable hypothesis testing rather than changes in estimated effects.
+
+#### Social and Demographic Determinants
+
+The results confirm that **demographic structure and mortality conditions are the dominant and most robust predictors of fertility across countries in 2023**.
+
+The **average age of mothers** retains a negative and statistically significant association with fertility at the 5 percent level. A one-year increase in average maternal age is associated with an approximately **5.2 percent decrease in the birth rate**, holding all other factors constant. This finding is consistent with well-established demographic theory linking delayed childbearing to reduced fertility and remains robust to heteroskedasticity.
+
+The **age dependency ratio** remains the strongest predictor in the model. The coefficient is positive and highly significant at the 1 percent level. Substantively, a one-unit increase in the dependency ratio is associated with an approximate **2.2 percent increase in the birth rate**, reflecting the reinforcing role of population age structure in sustaining higher fertility. This result is both statistically and theoretically robust.
+
+The coefficient on **logged child mortality** is positive and statistically significant at the 1 percent level. Interpreted as an elasticity, a 1 percent increase in child mortality is associated with a **0.23 percent increase in the birth rate**, consistent with fertility insurance behavior in environments characterized by higher child survival risk.
+
+The **crude death rate** exhibits a negative and highly significant effect. A one-unit increase in crude death rates is associated with an approximately **7.4 percent reduction in the birth rate**, suggesting that higher overall mortality is indicative of adverse health and social conditions that suppress fertility. This result corrects the counterintuitive behavior observed in the linear specification and remains stable under robust inference.
+
+#### Economic and Fiscal Variables
+
+In contrast, **economic and fiscal indicators do not exhibit robust independent effects** once demographic and mortality factors are controlled for.
+
+The coefficient on **logged GDP per capita** is statistically insignificant, indicating that income levels do not independently explain cross-country fertility variation in 2023 after accounting for demographic structure and mortality conditions. This finding suggests that economic development influences fertility largely through indirect social channels rather than direct income effects.
+
+Similarly, **government revenue and government spending (as shares of GDP)** remain statistically insignificant. These results imply that aggregate fiscal capacity does not exert a direct effect on fertility outcomes, likely because the relevant mechanisms operate through specific policy domains—such as education, health, and social protection—that are not separately identified in the aggregate measures used here.
+
+#### Robustness and Credibility of Results
+
+Crucially, the application of heteroskedasticity-robust standard errors does **not alter the substantive conclusions of the analysis**. All key demographic and mortality variables remain statistically significant, while economic and fiscal variables remain insignificant. This stability indicates that the main findings are **not driven by heteroskedasticity-induced bias in standard errors** and can therefore be regarded as reliable.
+
+#### Summary of Robust Findings
+
+-   Demographic and mortality variables are **statistically strong, theoretically consistent, and robust**.
+
+-   Economic and fiscal variables show **no independent effect** once social structure is controlled for.
+
+-   Robust standard errors strengthen confidence in the estimated relationships rather than overturning them.
