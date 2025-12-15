@@ -10,7 +10,7 @@ Using cross-sectional data from 65 countries and a log-linear Ordinary Least Squ
 ---
 
 ## Authors
-- **Josh T. Ganhinhin**  
+- **Josh Ganhinhin**  
 - **Jomar Ligas**  
 - **Lex Leander Lumantas**  
 - **Mark Oraño**  
