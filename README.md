@@ -37,6 +37,7 @@ The main objectives of this study are to:
 - Delayed maternal age and higher mortality rates are linked to lower fertility.
 - Economic indicators such as GDP per capita and fiscal variables show **no independent effect** once social factors are controlled.
 - Policy responses to fertility decline should prioritise **long-term demographic and health interventions** rather than short-term fiscal expansion.
+<img width="1328" height="800" alt="598682615_25385361374406338_1181553391938848595_n" src="https://github.com/user-attachments/assets/747b9669-e060-42d3-807f-a2ee6ee75271" />
 
 ---
 
