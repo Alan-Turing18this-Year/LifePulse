@@ -21,7 +21,7 @@ Using cross-sectional data from 65 countries and a log-linear Ordinary Least Squ
 | **Philip Andree C. Tupas** | Statistical Analysis and Results Synthesis |
 
 **Affiliation:**  
-Department of Data Science
+Department of Data Science  
 College of Information Technology and Computing  
 University of Science and Technology of Southern Philippines – Cagayan de Oro  
 Cagayan de Oro City, 9000, Philippines
