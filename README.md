@@ -10,11 +10,11 @@ Using cross-sectional data from 65 countries and a log-linear Ordinary Least Squ
 ---
 
 ## Authors
-- **Josh T. Ganhinhin**  
-- **Jomar B. Ligas**  
-- **Lex Leander V. Lumantas**  
-- **Mark Oraño**  
-- **Philip Andree C. Tupas**
+- **Josh T. Ganhinhin** - Team Lead and Project Coordinator
+- **Jomar B. Ligas** - Data Analysis and Interpretation  
+- **Lex Leander V. Lumantas** - Technical Implementation and Validation 
+- **Mark Oraño** - Team Coordination and Workflow Management  
+- **Philip Andree C. Tupas** - Statistical Analysis and Results Synthesis
 
 **Affiliation:**  
 College of Information Technology and Computing  
