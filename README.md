@@ -54,7 +54,7 @@ The main objectives of this study are to:
   - Crude death rate  
   - GDP per capita (log-transformed)  
   - Fiscal variables (government revenue and expenditure)
-<img width="852" height="410" alt="Screenshot 2025-12-16 095108" src="https://github.com/user-attachments/assets/ca1818d3-c9be-4bac-9a6f-1c5cc4a291aa" />
+<img width="1920" height="1080" alt="workflow" src="https://github.com/user-attachments/assets/7d1ea07b-0b91-4fa1-8dff-57ae32b016c1" />
 
 ---
 
