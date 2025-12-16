@@ -1,5 +1,6 @@
 LIFEPULSE
 # Social and Economic Determinants of Birth Rates in 2023: A Cross-Country Analysis
+### Linear Regression Analysis of Social and Economic Determinants
 
 ## Overview
 This repository contains the data, code, and supporting materials for the study **“Social and Economic Determinants of Birth Rates in 2023: A Cross-Country Analysis.”**  
