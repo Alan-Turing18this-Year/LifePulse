@@ -6,7 +6,7 @@ subtitle: |
   | --------------------------------------------------
   | Methodology a
   | --------------------------------------------------
-author: "yawa"
+author: "LifePulse"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -910,3 +910,4 @@ Crucially, the application of heteroskedasticity-robust standard errors does **n
 -   Economic and fiscal variables show **no independent effect** once social structure is controlled for.
 
 -   Robust standard errors strengthen confidence in the estimated relationships rather than overturning them.
+
