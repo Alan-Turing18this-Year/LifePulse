@@ -66,6 +66,10 @@ The main objectives of this study are to:
 
 ---
 
+<img width="7017" height="9933" alt="image" src="https://github.com/user-attachments/assets/bece9857-7f3e-4d50-8dda-bd7a17788c31" />
+
+---
+
 ## Data Sources
 - Birth rates and demographic indicators: *Our World in Data*
 - Economic indicators: World Bank / national accounts data
